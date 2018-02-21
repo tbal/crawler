@@ -43,6 +43,8 @@ use TYPO3\CMS\Core\Messaging\FlashMessageService;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
+use TYPO3\CMS\Extbase\Object\ObjectManager;
+use TYPO3\CMS\Extensionmanager\Utility\ConfigurationUtility;
 
 /**
  * Class BackendModule
@@ -152,9 +154,25 @@ class BackendModule extends AbstractFunctionModule
      *
      * @return void
      */
-    protected function loadExtensionSettings()
+    public function loadExtensionSettings()
     {
-        $this->extensionSettings = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['crawler']);
+        $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
+
+        /** @var ConfigurationUtility $configurationUtility */
+        $configurationUtility = $objectManager->get(ConfigurationUtility::class);
+        $settings = $configurationUtility->getCurrentConfiguration('crawler');
+
+        foreach ($settings as $setting) {
+            $this->extensionSettings[$setting['name']] = $setting['value'];
+        }
+    }
+
+    /**
+     * @return array
+     */
+    public function getExtensionSettings()
+    {
+        return $this->extensionSettings;
     }
 
     /**
