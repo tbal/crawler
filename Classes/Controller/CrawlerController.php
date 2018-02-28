@@ -30,6 +30,7 @@ use AOE\Crawler\Command\FlushCommandLineController;
 use AOE\Crawler\Command\QueueCommandLineController;
 use AOE\Crawler\Domain\Model\Reason;
 use AOE\Crawler\Event\EventDispatcher;
+use AOE\Crawler\Service\ExtensionSettingsService;
 use AOE\Crawler\Utility\IconUtility;
 use AOE\Crawler\Utility\SignalSlotUtility;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
@@ -173,6 +174,11 @@ class CrawlerController
     private $downloadCrawlUrls = false;
 
     /**
+     * @var ExtensionSettingsService
+     */
+    private $extensionSettingsService = null;
+
+    /**
      * Method to set the accessMode can be gui, cli or cli_im
      *
      * @return string
@@ -250,6 +256,8 @@ class CrawlerController
         $this->db = $GLOBALS['TYPO3_DB'];
         $this->backendUser = $GLOBALS['BE_USER'];
         $this->processFilename = PATH_site . 'typo3temp/tx_crawler.proc';
+
+        $this->extensionSettingsService = new ExtensionSettingsService();
 
         $settings = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['crawler']);
         $settings = is_array($settings) ? $settings : [];

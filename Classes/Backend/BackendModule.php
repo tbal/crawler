@@ -32,6 +32,7 @@ use AOE\Crawler\Domain\Model\Reason;
 use AOE\Crawler\Domain\Repository\ProcessRepository;
 use AOE\Crawler\Domain\Repository\QueueRepository;
 use AOE\Crawler\Event\EventDispatcher;
+use AOE\Crawler\Service\ExtensionSettingsService;
 use AOE\Crawler\Service\ProcessService;
 use AOE\Crawler\Utility\IconUtility;
 use TYPO3\CMS\Backend\Module\AbstractFunctionModule;
@@ -102,11 +103,17 @@ class BackendModule extends AbstractFunctionModule
     protected $processManager;
 
     /**
+     * @var ExtensionSettingsService
+     */
+    protected $extensionSettingsService;
+
+    /**
      * the constructor
      */
     public function __construct()
     {
         $this->processManager = new ProcessService();
+        $this->extensionSettingsService = new ExtensionSettingsService();
     }
 
     /**
@@ -150,32 +157,6 @@ class BackendModule extends AbstractFunctionModule
     }
 
     /**
-     * Load extension settings
-     *
-     * @return void
-     */
-    public function loadExtensionSettings()
-    {
-        $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
-
-        /** @var ConfigurationUtility $configurationUtility */
-        $configurationUtility = $objectManager->get(ConfigurationUtility::class);
-        $settings = $configurationUtility->getCurrentConfiguration('crawler');
-
-        foreach ($settings as $setting) {
-            $this->extensionSettings[$setting['name']] = $setting['value'];
-        }
-    }
-
-    /**
-     * @return array
-     */
-    public function getExtensionSettings()
-    {
-        return $this->extensionSettings;
-    }
-
-    /**
      * Main function
      *
      * @return	string		HTML output
@@ -185,8 +166,7 @@ class BackendModule extends AbstractFunctionModule
         global $LANG, $BACK_PATH;
 
         $this->incLocalLang();
-
-        $this->loadExtensionSettings();
+        
         if (empty($this->pObj->MOD_SETTINGS['processListMode'])) {
             $this->pObj->MOD_SETTINGS['processListMode'] = 'simple';
         }
@@ -959,8 +939,10 @@ class BackendModule extends AbstractFunctionModule
         $listView->setTotalUnprocessedItemCount($queueRepository->countAllPendingItems());
         $listView->setAssignedUnprocessedItemCount($queueRepository->countAllAssignedPendingItems());
         $listView->setActiveProcessCount($processRepository->countActive());
-        $listView->setMaxActiveProcessCount(MathUtility::forceIntegerInRange($this->extensionSettings['processLimit'], 1, 99, 1));
+        $listView->setMaxActiveProcessCount(MathUtility::forceIntegerInRange($this->extensionSettingsService->getSetting('processLimit'), 1, 99, 1));
         $listView->setMode($mode);
+
+
 
         $paginationView = new PaginationView();
         $paginationView->setCurrentOffset($offset);
@@ -997,9 +979,9 @@ class BackendModule extends AbstractFunctionModule
 
         $exitCode = 0;
         $out = [];
-        exec(escapeshellcmd($this->extensionSettings['phpPath'] . ' -v'), $out, $exitCode);
+        exec(escapeshellcmd($this->extensionSettingsService->getAllSettings('phpPath') . ' -v'), $out, $exitCode);
         if ($exitCode > 0) {
-            $this->addErrorMessage(sprintf($LANG->sL('LLL:EXT:crawler/Resources/Private/Language/locallang.xml:message.phpBinaryNotFound'), htmlspecialchars($this->extensionSettings['phpPath'])));
+            $this->addErrorMessage(sprintf($LANG->sL('LLL:EXT:crawler/Resources/Private/Language/locallang.xml:message.phpBinaryNotFound'), htmlspecialchars($this->extensionSettingsService->getAllSettings('phpPath'))));
         }
     }
 
