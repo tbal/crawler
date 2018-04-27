@@ -62,8 +62,8 @@ class ExtensionSettingsService
     }
 
     /**
-     * @param $settingKey
-     * @param $settingValue
+     * @param string $settingKey
+     * @param string $settingValue
      *
      * @return void
      */
@@ -73,14 +73,16 @@ class ExtensionSettingsService
         $configurationUtility = $this->objectManager->get(ConfigurationUtility::class);
 
         // Current configuration
-        $configuration = [];//$configurationUtility->getCurrentConfiguration('crawler');
+        $configuration = $configurationUtility->getCurrentConfiguration('crawler');
 
         // Add new configuration value
         $newConfiguration = [$settingKey => $settingValue];
 
         ArrayUtility::mergeRecursiveWithOverrule($newConfiguration, $configuration);
+        $configurationArray = $configurationUtility->convertValuedToNestedConfiguration($newConfiguration);
+
         $configurationUtility->writeConfiguration(
-            $configurationUtility->convertValuedToNestedConfiguration($newConfiguration),
+            $configurationArray,
             'crawler'
         );
     }

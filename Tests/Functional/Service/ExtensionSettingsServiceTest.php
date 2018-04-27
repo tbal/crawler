@@ -27,7 +27,6 @@ namespace AOE\Crawler\Tests\Functional\Service;
 
 use AOE\Crawler\Service\ExtensionSettingsService;
 use Nimut\TestingFramework\TestCase\FunctionalTestCase;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * Class ExtensionSettingsServiceTest
