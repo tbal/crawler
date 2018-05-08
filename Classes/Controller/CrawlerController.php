@@ -654,21 +654,7 @@ class CrawlerController
                                 $TSparserObject = GeneralUtility::makeInstance('TYPO3\CMS\Core\TypoScript\Parser\TypoScriptParser');
                                 $TSparserObject->parse($configurationRecord['processing_instruction_parameters_ts']);
 
-                                $subCfg = [
-                                    'procInstrFilter' => $configurationRecord['processing_instruction_filter'],
-                                    'procInstrParams.' => $TSparserObject->setup,
-                                    'baseUrl' => $this->getBaseUrlForConfigurationRecord(
-                                        $configurationRecord['base_url'],
-                                        $configurationRecord['sys_domain_base_url'],
-                                        $forceSsl
-                                    ),
-                                    'realurl' => $configurationRecord['realurl'],
-                                    'cHash' => $configurationRecord['chash'],
-                                    'userGroups' => $configurationRecord['fegroups'],
-                                    'exclude' => $configurationRecord['exclude'],
-                                    'rootTemplatePid' => (int) $configurationRecord['root_template_pid'],
-                                    'key' => $key,
-                                ];
+                                $subCfg = $this->getSubConfiguration($forceSsl, $configurationRecord, $TSparserObject, $key);
 
                                 // add trailing slash if not present
                                 if (!empty($subCfg['baseUrl']) && substr($subCfg['baseUrl'], -1) != '/') {
@@ -1167,17 +1153,7 @@ class CrawlerController
 
         // Compile value array:
         $parameters_serialized = serialize($parameters);
-        $fieldArray = [
-            'page_id' => intval($id),
-            'parameters' => $parameters_serialized,
-            'parameters_hash' => GeneralUtility::shortMD5($parameters_serialized),
-            'configuration_hash' => $configurationHash,
-            'scheduled' => $tstamp,
-            'exec_time' => 0,
-            'set_id' => intval($this->setID),
-            'result_data' => '',
-            'configuration' => $subCfg['key'],
-        ];
+        $fieldArray = $this->getFieldArray($id, $subCfg, $tstamp, $configurationHash, $parameters_serialized);
 
         if ($this->registerQueueEntriesInternallyOnly) {
             //the entries will only be registered and not stored to the database
@@ -1283,11 +1259,7 @@ class CrawlerController
             GeneralUtility::devlog('crawler-readurl start ' . microtime(true), __FUNCTION__);
         }
         // Get entry:
-        list($queueRec) = $this->db->exec_SELECTgetRows(
-            '*',
-            'tx_crawler_queue',
-            'qid=' . intval($queueId) . ($force ? '' : ' AND exec_time=0 AND process_scheduled > 0')
-        );
+        $queueRec = $this->getEntry($queueId, $force);
 
         if (!is_array($queueRec)) {
             return;
@@ -1317,7 +1289,7 @@ class CrawlerController
             //if mulitprocessing is used we need to store the id of the process which has handled this entry
             $field_array['process_id_completed'] = $this->processID;
         }
-        $this->db->exec_UPDATEquery('tx_crawler_queue', 'qid=' . intval($queueId), $field_array);
+        $this->updateQueueItem($queueId, $field_array);
 
         $result = $this->readUrl_exec($queueRec);
         $resultData = unserialize($result['content']);
@@ -1348,7 +1320,7 @@ class CrawlerController
             [$queueId, &$field_array]
         );
 
-        $this->db->exec_UPDATEquery('tx_crawler_queue', 'qid=' . intval($queueId), $field_array);
+        $this->updateQueueItem($queueId, $field_array);
 
         if ($this->debugMode) {
             GeneralUtility::devlog('crawler-readurl stop ' . microtime(true), __FUNCTION__);
@@ -1368,10 +1340,7 @@ class CrawlerController
     {
 
             // Set exec_time to lock record:
-        $field_array['exec_time'] = $this->getCurrentTime();
-        $this->db->exec_INSERTquery('tx_crawler_queue', $field_array);
-        $queueId = $field_array['qid'] = $this->db->sql_insert_id();
-
+        list($field_array, $queueId) = $this->setExecToLockRecord($field_array);
         $result = $this->readUrl_exec($field_array);
 
         // Set result in log which also denotes the end of the processing of this entry.
@@ -1383,7 +1352,7 @@ class CrawlerController
             [$queueId, &$field_array]
         );
 
-        $this->db->exec_UPDATEquery('tx_crawler_queue', 'qid=' . intval($queueId), $field_array);
+        $this->updateQueueItem($queueId, $field_array);
 
         return $result;
     }
@@ -2661,5 +2630,92 @@ class CrawlerController
         unset($configuration['paramExpanded']);
         unset($configuration['URLs']);
         return md5(serialize($configuration));
+    }
+
+    /**
+     * @param $forceSsl
+     * @param $configurationRecord
+     * @param $TSparserObject
+     * @param $key
+     * @return array
+     */
+    protected function getSubConfiguration($forceSsl, $configurationRecord, $TSparserObject, $key)
+    {
+        $subCfg = [
+            'procInstrFilter' => $configurationRecord['processing_instruction_filter'],
+            'procInstrParams.' => $TSparserObject->setup,
+            'baseUrl' => $this->getBaseUrlForConfigurationRecord(
+                $configurationRecord['base_url'],
+                $configurationRecord['sys_domain_base_url'],
+                $forceSsl
+            ),
+            'realurl' => $configurationRecord['realurl'],
+            'cHash' => $configurationRecord['chash'],
+            'userGroups' => $configurationRecord['fegroups'],
+            'exclude' => $configurationRecord['exclude'],
+            'rootTemplatePid' => (int)$configurationRecord['root_template_pid'],
+            'key' => $key,
+        ];
+        return $subCfg;
+    }
+
+    /**
+     * @param $id
+     * @param array $subCfg
+     * @param $tstamp
+     * @param $configurationHash
+     * @param $parameters_serialized
+     * @return array
+     */
+    protected function getFieldArray($id, array $subCfg, $tstamp, $configurationHash, $parameters_serialized)
+    {
+        $fieldArray = [
+            'page_id' => intval($id),
+            'parameters' => $parameters_serialized,
+            'parameters_hash' => GeneralUtility::shortMD5($parameters_serialized),
+            'configuration_hash' => $configurationHash,
+            'scheduled' => $tstamp,
+            'exec_time' => 0,
+            'set_id' => intval($this->setID),
+            'result_data' => '',
+            'configuration' => $subCfg['key'],
+        ];
+        return $fieldArray;
+    }
+
+    /**
+     * @param $queueId
+     * @param $force
+     * @return mixed
+     */
+    protected function getEntry($queueId, $force)
+    {
+        list($queueRec) = $this->db->exec_SELECTgetRows(
+            '*',
+            'tx_crawler_queue',
+            'qid=' . intval($queueId) . ($force ? '' : ' AND exec_time=0 AND process_scheduled > 0')
+        );
+        return $queueRec;
+    }
+
+    /**
+     * @param $queueId
+     * @param $field_array
+     */
+    private function updateQueueItem($queueId, $field_array)
+    {
+        $this->db->exec_UPDATEquery('tx_crawler_queue', 'qid=' . intval($queueId), $field_array);
+    }
+
+    /**
+     * @param $field_array
+     * @return array
+     */
+    private function setExecToLockRecord($field_array)
+    {
+        $field_array['exec_time'] = $this->getCurrentTime();
+        $this->db->exec_INSERTquery('tx_crawler_queue', $field_array);
+        $queueId = $field_array['qid'] = $this->db->sql_insert_id();
+        return array($field_array, $queueId);
     }
 }
