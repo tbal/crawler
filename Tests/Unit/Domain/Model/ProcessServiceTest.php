@@ -56,7 +56,7 @@ class ProcessServiceTest extends UnitTestCase
     {
         $this->subject = new ProcessService();
 
-        $this->crawlerController = $this->getMock(CrawlerController::class, ['dummyMethod'], [], '', false);
+        $this->crawlerController = $this->createMock(CrawlerController::class, ['dummyMethod'], [], '', false);
 
         define('TYPO3_DOCUMENT_ROOT', '/typo3/document/root/');
         define('TYPO3_SITE_PATH', '/typo3/site/path/');
