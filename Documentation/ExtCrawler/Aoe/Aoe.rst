@@ -23,5 +23,6 @@ The AOE Way
 | The integration of Open Source software is a central element of our
 | corporate philosophy and key driver of our growth.
 |
-| **The sourcecode of this Extension is continuously monitored by a** `Jenkins <http://jenkins-ci.org/>`_ **job.**
-| **Checking for** `checkstyles <http://code.google.com/p/phpcheckstyle/>`_, `mess <http://phpmd.org/>`_, `duplicate code <https://github.com/sebastianbergmann/phpcpd/>`_ **and** `code coverage <https://wiki.jenkins-ci.org/display/JENKINS/Clover+PHP+Plugin/>`_
+| The sourcecode of this Extension is continuously monitored by a `Travis CI <https://travis-ci.org/AOEpeople/crawler>`_ job.
+| Checking for checkstyles, mess, duplicate code and code coverage all done with `Scrutinizer CI <https://scrutinizer-ci.com/g/aoepeople/crawler/>`_.
+

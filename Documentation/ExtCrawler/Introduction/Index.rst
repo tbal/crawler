@@ -36,5 +36,4 @@ What to document!
 * Executing the queue: Should be extended as well, not much information to gain here.
 * Features: We should consider what we want to present here, if anything. I would tend to skip this section.
 * FAQ: Extend or skip
-* The AOE way: Update to reflect the current situation with Travis, Scrutinizer etc.
 * Target for cross referencing, why is that even in the documentation.
